@@ -12,6 +12,8 @@
 #include"trajectory_test.h"
 #include"stack_practice.h"
 #include"BinTree.h"
+#include <set>
+#include<stack>
 using namespace std;
 void expFuntionTest();
 void fibnacciTest(size_t);
@@ -71,27 +73,136 @@ void printBinTree(mystd::BinTree<T>* tree)
 	tree->traverseLevel([](const T&t_elem) {std::cout << t_elem << " "; });
 	cout << endl;
 }
+void myBinTreeTest();
+class SearchFlag
+{
+public:
+	SearchFlag(int a):count(0),begin(a)
+	{
 
+	}
+	int count = 0;
+	int begin;
+	std::vector<std::string> solution;
+};
+int  findMatch(std::stack<SearchFlag>*stack, 
+	const set<string>& dict, const string& str, std::stack<std::string> &result,
+	std::stack<std::string>& best_result,
+	int position)
+{
+	SearchFlag search_flag(position);
+	for (auto element : dict)
+	{
+		if (element.size() >( str.size() - position))
+			continue;
+		int i = 0;
+		while ( i != element.size())
+		{
+			if (str[position + i] != element[i])
+				break;
+			i++;
+		}
+		if (i == element.size())
+		{
+			if (str.size() == (position + element.size()))
+			{
+				if (result.size() < best_result.size())
+					best_result = result;
+			}
+			search_flag.count = search_flag.count + 1;
+			search_flag.solution.push_back(element);
+		}
+	}
+	if (search_flag.count == 0)
+	{
+		if (!stack->empty())
+		{
+			while (!stack->empty())
+			{
+				if (stack->top().count < 0)
+				{
+					stack->pop();
+					result.pop();
+					
+				}else
+				{
+					stack->top().count--;
+					result.pop();
+					int s = stack->top().solution[stack->top().count].size();
+					result.push(stack->top().solution[stack->top().count]);
+					return stack->top().begin + s;
+				}
+			}
+			if (stack->empty())
+				return 0;
+		}
+	}
+	else
+	{
+		stack->push(search_flag);
+		int s = stack->top().solution[stack->top().count].size();
+		result.push(stack->top().solution[stack->top().count]);
+		return stack->top().begin + s;
+	}
+
+
+}
+std::stack<std::string> mincut(const string& str, const set<string>& dict)
+{
+	std::stack<std::string> result;
+	std::stack<std::string> best_result;
+	std::stack<SearchFlag> search_stack;
+	int position = 0;
+	do {
+		position =findMatch(&search_stack, dict, str,result, best_result,position);
+	} while (!search_stack.empty());
+	return best_result;
+}
 int main()
 {
+	string strS;
+	string dictStr;
+	int nDict;
+	set<string> dict;
+	std::stack<std::string> solution;
+	cin >> strS;
+	cin >> nDict;
+	for (int i = 0; i < nDict; i++)
+	{
+		cin >> dictStr;
+		dict.insert(dictStr);
+	}
+	solution = mincut(strS, dict);
 
+	std::deque<string> s;
+
+	while (!solution.empty())
+	{
+		s.push_front(solution.top());
+		cout << solution.top();
+	}
+	/////
+	system("pause");
+}
+void myBinTreeTest()
+{
 	//二叉树层次构建和遍历打印测试；
 	/*
-					  1
-				 2         3
-		      4     5    6   7
-			8  9  10 11
+	1
+	2         3
+	4     5    6   7
+	8  9  10 11
 	*/
-	mystd::BinTree<int> bintree1{1,2,3,4,5,6,7,8,9,10,11};
+	mystd::BinTree<int> bintree1{ 1,2,3,4,5,6,7,8,9,10,11 };
 	cout << "bintree1 的内容为： " << endl;
 	printBinTree(&bintree1);
 
 	/*
-			100
-	    101     102
-	103   104  	
+	100
+	101     102
+	103   104
 	*/
-	mystd::BinTree<int> bintree2{100,101,102,103,104};
+	mystd::BinTree<int> bintree2{ 100,101,102,103,104 };
 	cout << "bintree2 的内容为： " << endl;
 	printBinTree(&bintree2);
 
@@ -103,8 +214,8 @@ int main()
 	cout << "左插入一个树 后bintree1 的内容为： " << endl;
 	last_of_bintree1 = bintree1.root()->traverseLevelRetLast(fun_);
 	cout << endl;
-	
-	bintree1.insertAsRTree(last_of_bintree1, new mystd::BinTree<int>{17,18,19,20,21,22});
+
+	bintree1.insertAsRTree(last_of_bintree1, new mystd::BinTree<int>{ 17,18,19,20,21,22 });
 	cout << "右插入一个树 后bintree1 的内容为： " << endl;
 	last_of_bintree1 = bintree1.root()->traverseLevelRetLast(fun_);
 	cout << endl;
@@ -135,9 +246,40 @@ int main()
 	bintree1.traverseMid(fun_);
 	cout << endl;
 	cout << "二叉树递归版遍历测试 : 后序遍历：" << endl;
-	bintree1.traverseBack (fun_);
+	bintree1.traverseBack(fun_);
 	cout << endl;
-	system("pause");
+
+	cout << "二叉树迭代版遍历测试：先序遍历：" << endl;
+	bintree1.traversePre(fun_, mystd::TraverseType::ITERATION);
+	cout << endl;
+
+	cout << "二叉树迭代版遍历测试： 中序遍历: " << endl;
+	bintree1.traverseMid(fun_, mystd::TraverseType::ITERATION);
+	cout << endl;
+
+	//等效的一种无栈的中序遍历
+	cout << "二叉树 后继查找测试：顺序输出:" << endl;
+	auto p_f = bintree1.fir_of_mid();
+	while (true)
+	{//todo
+		cout << p_f->data() << " ";
+		if (!p_f->suc())
+			break;
+		p_f = p_f->suc();
+	}
+	cout << endl;
+	cout << "二叉树前驱查找测试：逆序输出:" << endl;
+	while (p_f)
+	{
+		cout << p_f->data() << " ";
+		p_f = p_f->pre();
+	}
+	cout << endl;
+
+	cout << "二叉树迭代版遍历测试： 后序遍历: " << endl;
+	bintree1.traverseBack(fun_, mystd::TraverseType::ITERATION);
+	cout << endl;
+
 }
 void myListTest()
 {

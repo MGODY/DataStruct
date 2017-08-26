@@ -12,6 +12,8 @@ class BinTree;
 template <typename T>
 class BinNode;
 
+#define isRchild(x) ((!x ||!(x->ptr_parent_))?false:(x->ptr_parent_->ptr_Rchild_==x)?true:false)
+#define isLchild(x) ((!x ||!(x->ptr_parent_))?false:(x->ptr_parent_->ptr_Lchild_==x)?true:false)
 
 template <typename T>
 inline BinNode<T> *& fromParentTo(BinNode<T> *t)
@@ -106,14 +108,14 @@ public:
 	{
 		switch (traverse)
 		{
-			case TraverseType::RECURSIVE:
-				traversePrewithRec(this, f);
-				break;
-			case TraverseType::ITERATION:
-				traversePrewithIter(this, f);
-				break;
-			default:
-				break;
+		case TraverseType::RECURSIVE:
+			traversePrewithRec(this, f);
+			break;
+		case TraverseType::ITERATION:
+			traversePrewithIter(this, f);
+			break;
+		default:
+			break;
 		}
 	}
 	template <typename F>
@@ -122,7 +124,7 @@ public:
 		switch (traverse)
 		{
 		case TraverseType::RECURSIVE:
-			traverseMidWithRec (this, f);
+			traverseMidWithRec(this, f);
 			break;
 		case TraverseType::ITERATION:
 			traverseMidWithIter(this, f);
@@ -208,12 +210,33 @@ protected:
 	template<typename F>
 	void traversePrewithIter(node_position p_node, F&f)
 	{//todo
-
+		mystd::Stack<node_position> p_s;
+		while (true)
+		{
+			goLeftAlong(&p_s, p_node, f);
+			if (p_s.empty())
+				break;
+			p_node = p_s.top();
+			p_s.pop();
+		}
 	}
 	template<typename F>
-	void traverseMidWithRec(node_position p_node,F&f)
+	void goLeftAlong(mystd::Stack<node_position> * p_s, node_position p_node, F&f)
 	{
-		if (! p_node)
+		while (p_node)
+		{
+			f(p_node->data_);
+			if (p_node->Rchild())
+			{
+				p_s->push(p_node->Rchild());
+			}
+			p_node = p_node->Lchild();
+		}
+	}
+	template<typename F>
+	void traverseMidWithRec(node_position p_node, F&f)
+	{
+		if (!p_node)
 			return;
 		traverseMidWithRec(p_node->ptr_Lchild_, f);
 		f(p_node->data_);
@@ -222,9 +245,25 @@ protected:
 	template<typename F>
 	void traverseMidWithIter(node_position p_node, F&f)
 	{
-		
+		mystd::Stack<node_position> node_stack;
+		while (true)
+		{
+			goLeftEnd(&node_stack, p_node);
+			if (node_stack.empty())
+				break;
+			f((p_node = node_stack.top())->data_);
+			node_stack.pop();
+			p_node = p_node->ptr_Rchild_;
+		}
 	}
-
+	void goLeftEnd(mystd::Stack<node_position> *p_stack, node_position p_node)
+	{
+		while (p_node)
+		{
+			p_stack->push(p_node);
+			p_node = p_node->ptr_Lchild_;
+		}
+	}
 	template<typename F>
 	void traverseBackWithRec(node_position p_node, F&f)
 	{
@@ -237,7 +276,33 @@ protected:
 	template<typename F>
 	void traverseBackWithIter(node_position p_node, F&f)
 	{
-
+		mystd::Stack<node_position> s_node;
+		s_node.push(p_node);
+		//node_position p;
+		while (!s_node.empty())
+		{
+			if (s_node.top() != p_node->ptr_parent_)
+				goHighestOfLeft(&s_node);
+			f((p_node =  s_node.top())->data_);
+			s_node.pop();
+		}
+	}
+	void goHighestOfLeft(mystd::Stack<node_position> * sp_node)
+	{
+		node_position p_node;
+		while (p_node =sp_node->top())
+		{
+			if (p_node->ptr_Lchild_)
+			{
+				if (p_node->ptr_Rchild_)
+					sp_node->push(p_node->ptr_Rchild_);
+				sp_node->push(p_node->ptr_Lchild_);
+			}else
+			{
+				sp_node->push(p_node->ptr_Rchild_);
+			}
+		}
+		sp_node->pop();
 	}
 	template<typename F>
 	void traverseLevelWithRec(node_position p_node, F&f)
@@ -245,18 +310,18 @@ protected:
 		if (p_node)
 		{
 			int i = 0;
-			while (traverseLevelWithRec_loop(p_node,i,f))
+			while (traverseLevelWithRec_loop(p_node, i, f))
 			{
 				++i;
 			}
 		}
 	}
 	template<typename F>
-	bool traverseLevelWithRec_loop(node_position p_node,int depth,F&f)
+	bool traverseLevelWithRec_loop(node_position p_node, int depth, F&f)
 	{
-		if (!p_node )
+		if (!p_node)
 			return false;
-		
+
 		if (depth < 0)
 		{//到了该代码说明，p_node 是 depth=0时候 node的 Lchild或者 Rchild，并且不为空。
 			return true;
@@ -275,6 +340,40 @@ protected:
 		traverseLevelRetLast(f);
 	}
 public:
+	//返回该节点的直接后继
+	node_position suc()
+	{
+		node_position p_node = this;
+		if (ptr_Rchild_)
+		{
+			p_node = ptr_Rchild_;
+			while (p_node->ptr_Lchild_)
+				p_node = p_node->ptr_Lchild_;
+			return p_node;
+		}else
+		{
+			while (isRchild(p_node))
+				p_node = p_node->ptr_parent_;
+			return p_node->ptr_parent_;
+		}
+	}
+	node_position pre()
+	{
+		node_position p_node = this;
+		if (ptr_Lchild_)
+		{
+			p_node = ptr_Lchild_;
+			while (p_node->ptr_Rchild_)
+				p_node = p_node->ptr_Rchild_;
+			return p_node;
+		}
+		else
+		{
+			while (isLchild(p_node))
+				p_node = p_node->ptr_parent_;
+			return p_node->ptr_parent_;
+		}
+	}
 	template<typename F>
 	node_position traverseLevelRetLast(F&f)
 	{
@@ -294,6 +393,7 @@ public:
 		}
 	}
 protected:
+
 	node_position insertAsLchild(const T& t_elem)
 	{
 		if (!ptr_Lchild_)
@@ -524,7 +624,15 @@ public:
 	{
 		root_->traverseLevel(f, traverse);
 	}
-
+	node_position fir_of_mid()
+	{
+		if (!root_)
+			return nullptr;
+		node_position p_node = root_;
+		while (p_node->ptr_Lchild_)
+			p_node = p_node->ptr_Lchild_;
+		return p_node;
+	}
 private:
 	//空的节点的高度为-1；
 	int height_of(node_position p_node)
